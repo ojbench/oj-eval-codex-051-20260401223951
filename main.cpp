@@ -8,6 +8,7 @@ struct Item {
     // raw tokens of an item expression in infix form
     vector<string> tokens; // supports unary '-', parentheses, '+', '-', ids, numbers, '?'
     int addressIndex = -1; // address in output (memory index) where this item will be placed
+    vector<string> leadingLabels; // labels defined before this item (label:)*
 };
 
 struct Instr {
@@ -165,7 +166,7 @@ int main(){
         function<Item(size_t&)> parseItem = [&](size_t &p){
             Item it;
             // skip leading labels in item: label:*
-            while(p+1<tk.size() && tk[p+1]==":" && isIdentStart(tk[p][0])){ as.labelAddr[tk[p]] = curAddr; p+=2; }
+            while(p+1<tk.size() && tk[p+1]==":" && isIdentStart(tk[p][0])){ it.leadingLabels.push_back(tk[p]); p+=2; }
             auto parseTerm = [&](size_t &q, auto &&parseTermRef) -> void {
                 if(q>=tk.size()) return; 
                 if(tk[q]=="-") { it.tokens.push_back("-"); ++q; parseTermRef(q, parseTermRef); return; }
@@ -222,6 +223,12 @@ int main(){
     }
 
     // Second pass: evaluate expressions and emit
+    // Before evaluation, register item-level labels to their resolved addresses
+    for(auto &ins : as.instrs){
+        for(auto &it : ins.items){
+            for(auto &lab : it.leadingLabels){ as.labelAddr[lab] = it.addressIndex; }
+        }
+    }
     vector<long long> mem(curAddr, 0);
     for(auto &ins : as.instrs){
         if(ins.opcode != "."){

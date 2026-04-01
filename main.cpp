@@ -250,13 +250,31 @@ int main(){
         }
     }
 
-    // Print as space-separated with newlines roughly each 4 items like sample uses per-instruction
-    // But OJ likely accepts space/newline flexible; we'll print one value per space, newline after each 4 slots aligned to opcode boundaries
-    // Safer: print each value separated by space, and newline every 4 entries or when a dot-data run completes.
-    // For simplicity, just print with spaces and newline every 4 values.
-    for(size_t i=0;i<mem.size();++i){
-        cout << mem[i] << (i+1==mem.size()? '\n' : ' ');
-        if((i%4)==3) cout << "\n";
+    // Print in logical groups: each instruction as 4 numbers per line; consecutive '.' data grouped on a single line.
+    for(size_t i=0;i<as.instrs.size();){
+        auto &ins = as.instrs[i];
+        if(ins.opcode != "."){
+            // ensure three operands (expanded for msubleq/rsubleq)
+            cout << mem[ins.addressIndex];
+            // print exactly 3 operands if available; missing ones shouldn't happen now
+            for(int k=0;k<3 && k < (int)ins.items.size(); ++k){
+                cout << ' ' << mem[ins.items[k].addressIndex];
+            }
+            cout << "\n";
+            ++i;
+        } else {
+            // gather consecutive '.' items
+            bool first = true;
+            while(i<as.instrs.size() && as.instrs[i].opcode=="."){
+                for(auto &it : as.instrs[i].items){
+                    if(!first) cout << ' ';
+                    cout << mem[it.addressIndex];
+                    first = false;
+                }
+                ++i;
+            }
+            cout << "\n";
+        }
     }
     return 0;
 }
